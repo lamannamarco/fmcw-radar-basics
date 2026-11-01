@@ -102,6 +102,7 @@ Assume a single target at range $R$, moving with velocity $v$. At each $q$-th ch
 $$
 s[q, n] = A \, \exp\!\left( j 2\pi \left( f_c \tau + f_\text{IF} \, n T_s + f_d \, q T_c \right) \right), 
 $$
+
 where $f_\text{IF} = 2 \alpha R/c$, $f_d = 2 v /\lambda_c$ ($\lambda_c = c/f_c$) and $q = 0, \dots, Q - 1$ and $n = 0, \dots, N_\text{adc} - 1$. Note that $f_\text{IF}$ was previously defined, while $f_d$ is new. This quantity is the **Doppler frequency**, namely the rate at which the phase of the echo rotates from chirp to chirp because the target moves. It is proportional to the velocity $v$. When $v > 0$, we imply that the target is moving away from the radar (receding), and $v<0$ is approaching.
 
 #### 2.2.2 The range-Doppler map
@@ -114,7 +115,13 @@ Consider the image below, in which we have two targets: one at 75 m, moving at +
 
 The right-most figure is called the "range-Doppler map" (RDM) because it's 2D (hence a map) and because it provides the range _and_ the Doppler (velocity) information. 
 
-Assuming we have the data in matrix form as discussed above and, with a slight abuse of notation, definining it as $\mathbf{s}[q,n]$ the RDM can be computed as $\text{RDM} = |\mathbf{S}[k_d, k_r]| = |\text{FFT}_2 \{\mathbf{s}[q, n]\}|$, where $k_d$ is the discrete Doppler frequency and $k_r$ is the discrete intermediate frequency. Typically, the RDM is shown in log scale, so this means plotting $20\log_{10}(\text{RDM})$.
+Assuming we have the data in matrix form as discussed above and, with a slight abuse of notation, definining it as $\mathbf{s}[q,n]$ the RDM can be computed as 
+
+$$
+\text{RDM} = |\mathbf{S}[k_d, k_r]| = |\text{FFT}_2 \{\mathbf{s}[q, n]\}|, 
+$$ 
+
+where $k_d$ is the discrete Doppler frequency and $k_r$ is the discrete intermediate frequency. Typically, the RDM is shown in log scale, so this means plotting $20\log_{10}(\text{RDM})$.
 
 Note that the Doppler axis of the RDM is centered with respect to $v = 0$ m/s, which is done with an `fftshift` along slow time. The reason is that the FFT returns the frequencies in the order $0, 1, \dots, Q - 1$, where the second half of the bins actually are the negative frequencies (the spectrum wraps around). Since a negative Doppler frequency means a target moving towards the radar (negative velocity), `fftshift` swaps the two halves.
 
