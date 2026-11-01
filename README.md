@@ -32,12 +32,13 @@ In an FMCW radar, the transmit signal -call it $s_{RF}(t)$- is a linear chirp of
 The transmitter emits $s_{RF}(t)$. It travels through the air and impinges on the targets present in the scene. For simplicity, assume a single target at range $R$. The receiver "sees" an echo, namely a scaled and delayed version of the transmit signal, $A s_{RF}(t-\tau)$, where $\tau = 2R/c$ ($c$ is the speed of light and the factor $2$ considers the round-trip time, ie the time it takes from the signal to travel from the radar to the target and back). The receiver mixes the echo with a copy of the transmitted chirp (this procedure is called *dechirping*). The resulting baseband (IF) signal has the following mathematical model
 
 $$
-s(t) = A \, \exp \left\{ j 2\pi \left( f_c \tau + \alpha \tau t - \tfrac{1}{2} \alpha \tau^2 \right) \right\}, \text{ for } 0 \le t \le T_c
+s(t) = A \, \exp \left\lbrace j 2\pi \left( f_c \tau + \alpha \tau t - \tfrac{1}{2} \alpha \tau^2 \right) \right\rbrace, \text{ for } 0 \le t \le T_c
 $$
 
 where $A$ is the complex amplitude of the echo and the other parameters were previously defined. We will not be going into any specifics of $A$, but it is a function of the target, a few radar parameters and the radar-target distance. Also, keep in mind that $t$ is the time within the chirp (*fast time*). For simplicity, the last term in $s(t)$ is called "residual phase". For the purposes of this simulation, we will drop it.
 
 The Fourier Transform of $s(t)$ has a closed form and it is  
+
 $$
 S(f) = \int_0^{T_c} s(t) \, e^{-j 2\pi f t} \, dt 
 = A \, T_c \, e^{j 2\pi f_c \tau} \, e^{-j \pi (f - \alpha\tau) T_c} \, \text{sinc}\!\left( (f - \alpha\tau) T_c \right)
