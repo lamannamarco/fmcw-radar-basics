@@ -32,7 +32,7 @@ In an FMCW radar, the transmit signal -call it $s_{RF}(t)$- is a linear chirp of
 The transmitter emits $s_{RF}(t)$. It travels through the air and impinges on the targets present in the scene. For simplicity, assume a single target at range $R$. The receiver "sees" an echo, namely a scaled and delayed version of the transmit signal, $A s_{RF}(t-\tau)$, where $\tau = 2R/c$ ($c$ is the speed of light and the factor $2$ considers the round-trip time, ie the time it takes from the signal to travel from the radar to the target and back). The receiver mixes the echo with a copy of the transmitted chirp (this procedure is called *dechirping*). The resulting baseband (IF) signal has the following mathematical model
 
 $$
-s(t) = A \, \exp\!\left\{ j 2\pi \left( f_c \tau + \alpha \tau t - \tfrac{1}{2} \alpha \tau^2 \right) \right\}, \text{ for } 0 \le t \le T_c
+s(t) = A \, \exp \left\{ j 2\pi \left( f_c \tau + \alpha \tau t - \tfrac{1}{2} \alpha \tau^2 \right) \right\}, \text{ for } 0 \le t \le T_c
 $$
 
 where $A$ is the complex amplitude of the echo and the other parameters were previously defined. We will not be going into any specifics of $A$, but it is a function of the target, a few radar parameters and the radar-target distance. Also, keep in mind that $t$ is the time within the chirp (*fast time*). For simplicity, the last term in $s(t)$ is called "residual phase". For the purposes of this simulation, we will drop it.
@@ -52,10 +52,12 @@ $$
 Since frequency and range are related, the *position* of the peak also tells us the range of the target. The phase terms do not change where the peak is (NOTE: Should we discard the phase, then? No, in a lot of applications the phase is just as important as the magnitude).
 
 What happens when several targets are present in the scene? The resulting baseband signal is the linear combination of the contribution of each target
+
 $$
 s(t) = \sum_{k=0}^{K-1} A_k \, \exp\!\left( j 2\pi \left( f_c \tau_k + \alpha \tau_k t \right) \right),
 $$
-where $A_k$ and $\tau_k = 2R_k/c$ are the amplitude and time delay of the $k$-th target, and $K$ is the total number of targets in the scene. In frequency domain, we would be seeing $\text{sinc}()$s centered w.r.t. $f_{\text{IF},k} = \alpha \tau_k = 2 \alpha R_k / c$, for $k=0, \dots, K-1$.
+
+where $A_k$ and $\tau_k = 2R_k/c$ are the amplitude and time delay of the $k$-th target, and $K$ is the total number of targets in the scene. In frequency domain, we would be seeing $\text{sinc}()$ centered w.r.t. $f_{\text{IF},k} = \alpha \tau_k = 2 \alpha R_k / c$, for $k=0, \dots, K-1$.
 
 So far the signal is continuous in time. The ADC now samples it, $s[n] = s(n T_s)$ for $n = 0, \dots, N_\text{adc} - 1$, at the rate $f_s = 1/T_s$. Since the chirp lasts $T_c$, this gives up to $N_\text{adc} = \lceil T_c f_s \rceil$ samples per chirp (in practice slightly fewer, since the ADC starts after a short settling time).
 
