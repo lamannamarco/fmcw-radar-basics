@@ -1,20 +1,20 @@
-# FMCW radar basics
+# FMCW radar basics tutorial
 
-This repository contains a self-contained simulation of a 77 GHz FMCW MIMO radar observing a scene with two point targets, shown below. The script `main.py` simulates the raw data sampled by the ADCs, computes the range-angle map, and generates a set of figures illustrating each stage of the processing chain.
+This repository explains how a frequency modulated continuous-wave (FMCW) radar determines range, velocity and angle of potential objects/targets in a scene. This README file that you are currently reading provides the theoretical base, which is then applied in `main.py`, the simulation.
+
+More specifically, the simulation assumes a 77 GHz FMCW MIMO radar observing a scene with two point targets, shown below. The script `main.py` simulates the raw data sampled by the ADCs, computes the range-angle map, and generates a set of figures illustrating each stage of the processing chain.
 
 ![The scene: the radar at the origin and two targets](docs/01_scene.png)
 
-The radar parameters are based on a commercially available chip (77 GHz, 45 MSPS ADC, 4 transmitters, 3 receivers), but the simulation does not model any specific device.
+The radar parameters are based on a commercially available chip (77 GHz, 45 MSPS ADC, 4 transmitters, 3 receivers). Feel free to clone the repo and make any adjustments you want.
 
-This repo is intended for anyone with a theoretical background in radar (or adjacent topics, like communication) who want to see how to tie some basic radar theory together through simulation.
-
-Finally, for transparency, I want to make it clear that AI tools were used as coding assistants to refine the implementation of the code and improve the readability of this file.
+For transparency, I want to make it clear that AI tools were used as coding assistants to refine the implementation of the code and improve the readability of this file.
 
 
 ## 1. What you will learn
 
 - How to generate the discrete-time FMCW baseband (IF) signal model.
-- How the waveform parameters (bandwidth, slope, chirp length, sampling rate) set the range resolution and the maximum range, and how to choose them.
+- How the waveform parameters (bandwidth, slope, chirp length, sampling rate) set other parameters, like the range resolution and the maximum range
 - How an FMCW radar determines the range and velocity of a target
 - How a MIMO architecture determines the target position in angle and why it works
 - The processing chain: range FFT → averaging over chirps → angle FFT, and how to read the resulting range-angle map.
@@ -29,13 +29,13 @@ Finally, for transparency, I want to make it clear that AI tools were used as co
 
 In an FMCW radar, the transmit signal -call it $s_{RF}(t)$- is a linear chirp of duration $T_c$. It starts at $f_c$ and ends at $f_c + B$, where $B$ is the desired bandwidth. The bandwidth increases linearly as $f(t) = f_c + \alpha t$, where $\alpha = B / T_c$ (we will refer to $\alpha$ as the chirp slope) and $t \in \left[0, T_c \right]$. 
 
-The transmitter emits $s_{RF}(t)$. It travels through the air and impinges on the targets present in the scene. For simplicity, assume a single target at range $R$. The receiver "sees" an echo, namely a scaled and delayed version of the transmit signal, $A s_{RF}(t-\tau)$, where $\tau = 2R/c$ ($c$ is the speed of light and the factor $2$ considers the round-trip time, ie the time it takes from the signal to travel from the radar to the target and back). The receiver mixes the echo with a copy of the transmitted chirp (dechirping). The resulting baseband (IF) signal has the following mathematical model
+The transmitter emits $s_{RF}(t)$. It travels through the air and impinges on the targets present in the scene. For simplicity, assume a single target at range $R$. The receiver "sees" an echo, namely a scaled and delayed version of the transmit signal, $A s_{RF}(t-\tau)$, where $\tau = 2R/c$ ($c$ is the speed of light and the factor $2$ considers the round-trip time, ie the time it takes from the signal to travel from the radar to the target and back). The receiver mixes the echo with a copy of the transmitted chirp (this procedure is called *dechirping*). The resulting baseband (IF) signal has the following mathematical model
 
 $$
 s(t) = A \, \exp\!\left\{ j 2\pi \left( f_c \tau + \alpha \tau t - \tfrac{1}{2} \alpha \tau^2 \right) \right\}, \text{ for } 0 \le t \le T_c
 $$
 
-where $A$ is the complex amplitude of the echo and the other parameters were previously defined. Also, keep in mind that $t$ is the time within the chirp (*fast time*). For simplicity, the last term in $s(t)$ is called "residual phase". For the purposes of this simulation, we will drop it.
+where $A$ is the complex amplitude of the echo and the other parameters were previously defined. We will not be going into any specifics of $A$, but it is a function of the target, a few radar parameters and the radar-target distance. Also, keep in mind that $t$ is the time within the chirp (*fast time*). For simplicity, the last term in $s(t)$ is called "residual phase". For the purposes of this simulation, we will drop it.
 
 The Fourier Transform of $s(t)$ has a closed form and it is  
 $$
@@ -49,19 +49,19 @@ $$
 f_\text{IF} = \frac{2\alpha R}{c} \Longleftrightarrow R = \frac{c \, f_\text{IF}}{2\alpha}.
 $$
 
-The *position* of the peak also tells us the range of the target. Note that for the purpose of this discussion, we mainly care about the magnitude. The phase terms do not change where the peak is.
+Since frequency and range are related, the *position* of the peak also tells us the range of the target. The phase terms do not change where the peak is (NOTE: Should we discard the phase, then? No, in a lot of applications the phase is just as important as the magnitude).
 
 What happens when several targets are present in the scene? The resulting baseband signal is the linear combination of the contribution of each target
 $$
 s(t) = \sum_{k=0}^{K-1} A_k \, \exp\!\left( j 2\pi \left( f_c \tau_k + \alpha \tau_k t \right) \right),
 $$
-where $A_k$ and $\tau_k = 2R_k/c$ are the amplitude and time delay of the $k$-th target, and $K$ is the total number of targets in the scene. In frequency domain, we would be seeing $\text{sinc}()$ centered w.r.t. $f_{\text{IF},k} = \alpha \tau_k = 2 \alpha R_k / c$, for $k=0, \dots, K-1$.
+where $A_k$ and $\tau_k = 2R_k/c$ are the amplitude and time delay of the $k$-th target, and $K$ is the total number of targets in the scene. In frequency domain, we would be seeing $\text{sinc}()$s centered w.r.t. $f_{\text{IF},k} = \alpha \tau_k = 2 \alpha R_k / c$, for $k=0, \dots, K-1$.
 
 So far the signal is continuous in time. The ADC now samples it, $s[n] = s(n T_s)$ for $n = 0, \dots, N_\text{adc} - 1$, at the rate $f_s = 1/T_s$. Since the chirp lasts $T_c$, this gives up to $N_\text{adc} = \lceil T_c f_s \rceil$ samples per chirp (in practice slightly fewer, since the ADC starts after a short settling time).
 
 Why is $f_s$ enough? Because we assume an I/Q (complex) receive chain: the in-phase and quadrature components are both sampled, so each sample is a complex number. A real signal with frequencies up to $f_\text{max}$ needs $f_s \ge 2 f_\text{max}$, but the IF frequencies are all positive (since $R > 0$), so a complex signal occupies $[0, f_\text{max}]$ and needs only $f_s \ge f_\text{max}$.
 
-**Example.** Assume that we have a radar emitting a chirp with $f_c = 77$ GHz, $B = 120$ MHz, $T_c = 12$ µs, $f_s = 45$ MHz. The ADC acquires $N_\text{adc} = 512$ samples (11.4 µs, slightly less than $T_c$ because of the settling time) and there are two targets in the scene, one at 75 m and another one at 150 m. The slope is $\alpha = B/T_c = 10$ MHz/µs, so $f_\text{IF,max} = f_s$ would correspond to $R_{\max} = c f_s / (2\alpha) \approx 675$ m, well beyond the 300 m shown in the figures. The left figure below shows the time-domain data of a single chirp, $s[n]$ for $n = 0, \dots, N_\text{adc} - 1$. The right figure shows the magnitude of its discrete frequency-domain version, $|S[k_r]|$ for $k_r = 0, \dots, N_\text{fft} - 1$ ($N_\text{fft} = 512$). In the time domain the two tones are hard to tell apart, while the FFT spectrum shows one peak per target.
+**Example.** Assume that we have a radar emitting a chirp with $f_c = 77$ GHz, $B = 120$ MHz, $T_c = 12$ µs, $f_s = 45$ MHz. The ADC acquires $N_\text{adc} = 512$ samples (11.4 µs, slightly less than $T_c$ because of the settling time) and there are two targets in the scene, one at 75 m and another one at 150 m. The slope is $\alpha = B/T_c = 10$ MHz/µs, so $f_\text{IF,max} = f_s$ would correspond to $R_{\max} = c f_s / (2\alpha) \approx 675$ m, well beyond the 300 m shown in the figures. The left figure below shows the time-domain data of a single chirp (I/Q channels), $s[n]$ for $n = 0, \dots, N_\text{adc} - 1$. The right figure shows the magnitude of its discrete frequency-domain version, $|S[k_r]|$ for $k_r = 0, \dots, N_\text{fft} - 1$ ($N_\text{fft} = 512$). In the time domain the two tones are hard to tell apart, while the FFT spectrum shows one peak per target.
 
 ![IF signal of one chirp and the magnitude of its FFT](docs/03_if_signal.png)
 
@@ -75,9 +75,9 @@ We have seen above that an FMCW radar is characterized by $B$, $T_c$ and $f_s$ (
 
 How do these parameters "shape" a radar?
 
-- **Range resolution.** It can be shown that the range resolution, $\Delta R$, is $\Delta R = c/(2B)$. It is the smallest range separation for which two targets still show up as two distinct peaks, so it is what we use to select the bandwidth: the application requires a given $\Delta R$, which sets $B = c/(2\Delta R)$, and this must satisfy $B \le B_{\max}$ (1).
-- **Sampling rate.** The ADC samples at $f_s$, and since a higher rate lets us observe higher IF frequencies, we want to sample as fast as possible. In any case, we select the $f_s$ we want, as long as $f_s \le f_{s,\max}$ (2).
-- **Chirp length.** Having fixed $B$ and $f_s$, we are left to select the chirp length $T_c$. The slope is $\alpha = B/T_c$, so the slope limit (3), $\alpha \le \alpha_{\max}$, requires $T_c \ge B/\alpha_{\max}$. Within this limit, $T_c$ is a choice appropriate for the application. Once $T_c$ is known, we can also determine the (maximum) number of samples per chirp, $N_\text{adc} = \lceil f_s T_c \rceil$, where $\lceil \cdot \rceil$ is the ceiling (round up) operator.
+- **Range resolution.** It can be shown that the range resolution, $\Delta R$, is $\Delta R = c/(2B)$. It is the smallest range separation for which two targets still show up as two distinct peaks, so it is what we use to select the bandwidth. The specific value depends on the application, so once we have $\Delta R$, it sets $B$, which in turn needs to satisfy (1)
+- **Sampling rate.** The ADC samples at $f_s$, and since a higher rate lets us observe higher IF frequencies, we usually want to sample as fast as possible. In any case, we have to make sure that we pick a sampling frequency that agrees with (2)
+- **Chirp length.** Having fixed $B$ and $f_s$, we are left to select the chirp length $T_c$. The slope is $\alpha = B/T_c$, so the slope limit in (3), requires $T_c \ge B/\alpha_{\max}$. Within this limit, $T_c$ is a choice appropriate that once again depends on the application. Once $T_c$ is known, we can also determine the (maximum) number of samples per chirp, $N_\text{adc} = \lceil f_s T_c \rceil$, where $\lceil \cdot \rceil$ is the ceiling (round up) operator.
 - **Maximum range.** This is now a consequence of the choices above. Since $f_\text{IF} = 2\alpha R/c$, the maximum range corresponds to the maximum IF frequency. With an I/Q receiver we can set $f_\text{IF,max} = f_s$, so $R_{\max} = c f_s / (2 \alpha) = c f_s T_c / (2B)$. If this is not enough for the application, a longer chirp (a smaller slope) gives more range.
 
 Note that the steps above are just a rough guide, not the only way to proceed.
@@ -99,17 +99,17 @@ Assume a single target at range $R$, moving with velocity $v$. At each $q$-th ch
 $$
 s[q, n] = A \, \exp\!\left( j 2\pi \left( f_c \tau + f_\text{IF} \, n T_s + f_d \, q T_c \right) \right), 
 $$
-where $f_\text{IF} = 2 \alpha R/c$, $f_d = 2 v /\lambda_c$ ($\lambda_c = c/f_c$) and $q = 0, \dots, Q - 1$ and $n = 0, \dots, N_\text{adc} - 1$. Note that $f_\text{IF}$ was previously defined, while $f_d$ is new. This quantity is **Doppler frequency**, namely the rate at which the phase of the echo rotates from chirp to chirp because the target moves. It is proportional to the velocity $v$. When $v > 0$, we imply that the target is moving away from the radar (receding), and $v<0$ is approaching.
+where $f_\text{IF} = 2 \alpha R/c$, $f_d = 2 v /\lambda_c$ ($\lambda_c = c/f_c$) and $q = 0, \dots, Q - 1$ and $n = 0, \dots, N_\text{adc} - 1$. Note that $f_\text{IF}$ was previously defined, while $f_d$ is new. This quantity is the **Doppler frequency**, namely the rate at which the phase of the echo rotates from chirp to chirp because the target moves. It is proportional to the velocity $v$. When $v > 0$, we imply that the target is moving away from the radar (receding), and $v<0$ is approaching.
 
 #### 2.2.2 The range-Doppler map
 
-Why did we put the data into matrix form? It allows us to exploit fast algorithms that implement the Fourier Transform, like the FFT. An FFT along fast time (along the rows) provides us with the range information about the target. An FFT along slow time (along the columns) gives the target's velocity. 
+Why did we put the data into matrix form? It allows us to exploit fast algorithms that implement the Fourier Transform, like the FFT. An FFT along fast time (along the rows) provides us with the range information about the target. An FFT along slow time (along the columns) gives the target's velocity. Do you have to sequentially perform the FFT along the rows and then along the colums? Of course not, you can apply a 2D FFT (see below)
 
-Consider the image below, in which we have two targets: one at 75 m, moving at +20 m/s, and another one at 150 m, moving at -10 m/s. The left-most image, shows the $\text{Re} \{ s[q,n]\}$ (the I channel of the discretized data), the center images shows the result after applying the FFT along fast time to the raw data, while the right-most image shows the result after also applying the FFT along the columns. In the center-image, we would only be able to tell that there are two targets at 75 and 150 m. In the right-most image, we can determine the target's range _and_ velocity. 
+Consider the image below, in which we have two targets: one at 75 m, moving at +20 m/s, and another one at 150 m, moving at -10 m/s. The left-most image, shows the $\text{Re} \{ s[q,n]\}$ (the I channel of the discretized data), the center images shows the result after applying the FFT along fast time to the raw data, while the right-most image shows the result after also applying the FFT along the columns. In the center-image, we would only be able to tell that there are two targets, on at 75 and the other one at 150 m. In the right-most image, we can determine the target's range _and_ velocity. 
 
 ![Raw data, FFT along fast time, FFT along slow time](docs/05_range_doppler.png)
 
-The right-most figure is called the "range-Doppler map" (RDM) because it's 2D (hence a map) and because it provides the range _and_ the Doppler information. 
+The right-most figure is called the "range-Doppler map" (RDM) because it's 2D (hence a map) and because it provides the range _and_ the Doppler (velocity) information. 
 
 Assuming we have the data in matrix form as discussed above and, with a slight abuse of notation, definining it as $\mathbf{s}[q,n]$ the RDM can be computed as $\text{RDM} = |\mathbf{S}[k_d, k_r]| = |\text{FFT}_2 \{\mathbf{s}[q, n]\}|$, where $k_d$ is the discrete Doppler frequency and $k_r$ is the discrete intermediate frequency. Typically, the RDM is shown in log scale, so this means plotting $20\log_{10}(\text{RDM})$.
 
@@ -121,7 +121,7 @@ Note that the Doppler axis of the RDM is centered with respect to $v = 0$ m/s, w
 
 In the previous sections we saw how to measure the distance of a target and its velocity relative to the radar. To determine the direction of the target, we need to sample the space dimension. How? By sampling the wavefront at several spatial positions, which requires the use of several antennas. 
 
-At a high-level, a target produces an (approximately) planar wavefront, which reaches each antenna at a slightly different time and different phase, as shown in the figure below. These phase differences between the antennas is what matters for angle estimation.
+Assume that we have several antennas. At a high-level, a target produces an (approximately) planar wavefront, which reaches each antenna at a slightly different time and different phase, as shown in the figure below. These phase differences between the antennas is what matters for angle estimation.
 
 ![A planar wavefront reaching a linear array](docs/06_wavefront.png)
 
@@ -130,7 +130,7 @@ For simplicity, as shown in the figure above, we will assume that the antennas a
 #### 2.3.2 Element spacing
 Why is the $\lambda_c/2$ spacing important? Because it is the Nyquist criterion applied in space. 
 
-Let us draw a parallel. Consider a signal $s(t)$ in the time domain that comprises frequencies up to $f_{\max}$. To avoid sample it and avoid aliasing, we need that the sampling frequency is set to $f_s \ge 2 f_{\max}$. Alternatively, we can say that the sampling interval must satisfy $T_s \le 1/(2 f_{\max})$. Now, let us apply the same concept in space. If we want to avoid spatial aliasing the spatial interval needs to be $d$ [m] (equivalent to $T_s$ [s] in the time domain). Therefore the spatial sampling frequency needs to be $1/d$. For a target at angle $\theta$, it can be shown that the phase seen at position $x$ along the array is $2\pi x \sin\theta/\lambda_c$, a complex exponential in $x$ with spatial frequency $f_x = \sin\theta/\lambda_c$. For $\theta \in [-90°, 90°]$, $|\sin\theta| \le 1$, so the largest spatial frequency is $|f_x|_{\max} = 1/\lambda_c$. The Nyquist criterion then reads
+Let us draw a parallel. Consider a signal $s(t)$ in the time domain that comprises frequencies up to $f_{\max}$. To avoid aliasing, we need $f_s \ge 2 f_{\max}$. Alternatively, we can say that the sampling interval must satisfy $T_s \le 1/(2 f_{\max})$. Now, let us apply the same concept in space. If we want to avoid spatial aliasing the spatial interval needs to be $d$ [m] (equivalent to $T_s$ [s] in the time domain). Therefore the spatial sampling frequency needs to be $1/d$. For a target at angle $\theta$, it can be shown that the phase seen at position $x$ along the linear array shown above is $2\pi x \sin\theta/\lambda_c$, a complex exponential in $x$ with spatial frequency $f_x = \sin\theta/\lambda_c$. For $\theta \in [-90°, 90°]$, $|\sin\theta| \le 1$, so the largest spatial frequency is $|f_x|_{\max} = 1/\lambda_c$. The (spatial) Nyquist criterion then reads
 
 $$
 \frac{1}{d} \ge \frac{2}{\lambda_c} \Longleftrightarrow d \le \frac{\lambda_c}{2}
@@ -171,15 +171,16 @@ $$
 S[k_a, k_d, k_r] = \text{FFT}_3 \left\{ s[p, q, n] \right\},
 $$
 
-where $k_a$, $k_d$ and $k_r$ are the discrete angle, Doppler and range frequency bins. In spectrum domain, ie $|S[k_a, k_d, k_r]|$, each target then shows up as a sinc-like peak in 3D, as illustrated below.
+where $k_a$, $k_d$ and $k_r$ are the discrete angle, Doppler and range frequency bins. In the spectrum domain, ie $|S[k_a, k_d, k_r]|$, each target then shows up as a sinc-like peak in 3D, as illustrated below.
 
 ![The data cube and its 3D FFT](docs/08_data_cube.png)
 
-How do we get the angle information? Defining $N_\text{ang}$ the FFT size performed in angle, the target is located in $\theta = \arcsin\left( \frac{2 k_a}{N_\text{ang}} \right)$. As with the Doppler axis, the bins are centered around $0$ via an `fftshift`: $k_a = 0$ is the direction straight ahead ($\theta = 0^{\circ}$), negative bins are to the left and positive bins are to the right.
+How do we get the angle information? Defining $N_\text{ang}$ the FFT size performed in angle, the target is located in $\theta = \arcsin\left( \frac{2 k_a}{N_\text{ang}} \right)$, where $k_a$ is the (spatial) bin at which the target's 3D sinc is located. As with the Doppler axis, the bins are centered around $0$ via an `fftshift`: $k_a = 0$ is the direction straight ahead ($\theta = 0^{\circ}$), negative bins are to the left and positive bins are to the right.
 
-In this tutorial, we are considering static targets, so the cube can be collapsed into a 2D map. Because of the linearity property, this operation can be achieved in multiple ways. For example, first we obtain the averaged chirp, then we perform a 2D FFT along angle and range. Plotting the resulting magnitude gives us a range-angle map.
+In this tutorial, we are considering static targets, so the cube can be collapsed into a 2D map. Because of the linearity property, this operation can be achieved in multiple ways. For example, first we obtain the averaged chirp, then we perform a 2D FFT along angle and range. Plotting the resulting magnitude, gives us a range-angle map.
 
-The figure below shows what the code does too. The "true" scene is provided on the left. It comprises two targets. Target 1 (in red) is at $R = 75$ m, not moving, at an angle $\theta = -30°$ (to the left of the radar). Its position is $(x, y) = (75 \sin(-30°), \, 75 \cos(-30°)) \approx (-37.5, \, 65)$ m, and its SNR is 20 dB. Target 2 (in blue) is at $R = 150$ m, not moving, at an angle $\theta = +45°$ (to the right of the radar). Its position is $(x, y) = (150 \sin(45°), \, 150 \cos(45°)) \approx (106, \, 106)$ m, and its SNR is 10 dB. The figure to the right shows the reconstructed scene in the same $(x, y)$ coordinates ($x = R\sin\theta$, $y = R\cos\theta$). As can be seen, the reconstruction works as expected. We see two bright spots in the range-angle map at $R \approx 75$ m, $\theta \approx -30°$ and $R \approx 150$ m, $\theta \approx +45°$. Target 2 is dimmer than Target 1 simply because its SNR is 10 dB lower.
+The figure below shows what the code does too. The "true" scene is provided on the left. Target 1 (in red) is at $R = 75$ m, not moving, at an angle $\theta = -30°$ (to the left of the radar). Its position is $(x, y) = (75 \sin(-30°), \, 75 \cos(-30°)) \approx (-37.5, \, 65)$ m, and its SNR is 20 dB. Target 2 (in blue) is at $R = 150$ m, not moving, at an angle $\theta = +45°$ (to the right of the radar). Its position is $(x, y) = (150 \sin(45°), \, 150 \cos(45°)) \approx (106, \, 106)$ m, and its SNR is 10 dB. If you do not know what SNR means, do not worry. For the time being, simply assume is the target's amplitude. 
+The figure to the right shows the reconstructed scene in the same $(x, y)$ coordinates ($x = R\sin\theta$, $y = R\cos\theta$). As can be seen, the reconstruction works as expected. We see two bright spots in the range-angle map at $R \approx 75$ m, $\theta \approx -30°$ and $R \approx 150$ m, $\theta \approx +45°$. Target 2 is dimmer than Target 1 simply because its return (amplitude) is lower than Target 1.
 
 ![The scene, and the range-angle map reconstructed from the data](docs/09_range_angle.png)
 
@@ -214,7 +215,7 @@ targets = [
 **Simulation.** For each target, the round-trip delay gives the beat phase $f_c \tau + \alpha \tau t$, which is added for every RX with its angle-dependent phase $2\pi (x_{tx} + x_{rx}) \sin\theta / \lambda$. Complex Gaussian noise is added at the end, simulating the thermal noise introduced by the receive chain (we ignore all of the other possible noise types). The result is the 3D raw cube `(element, chirp, sample)` of size $N_{ve} \times Q \times N_\text{adc}$ (12 virtual elements, one per TX/RX pair).
 
 **Signal processing.**
-1. **Range FFT** over fast time, keeping the bins that cover 0–300 m. We also multiply each chirp by a windowing function (Hann) to decrease the range sidelobes. Try to see what happens with/without it when placing to targets relatively close together in range (but not too close).
+1. **Range FFT** over fast time, keeping the bins that cover 0–300 m to simplify the visualization. We also multiply each chirp by a windowing function (Hann) to decrease the range sidelobes. Try to see what happens with/without it when placing to targets relatively close together in range (but not too close).
 2. **Averaging over chirps.** The targets are static, so the chirps add coherently while the noise averages out.
 3. **Virtual array**: the cube already has the 12 virtual elements along its first axis (`p = l·N_rx + m`), so after averaging we are left with the layout `(element, range)`.
 4. **Angle FFT** across the virtual array (Hann window, zero-padded to 128 points). For $d = \lambda/2$, bin $k$ corresponds to $\sin\theta = 2k/N_\text{ang}$. The **range-angle map** is the resulting power.
