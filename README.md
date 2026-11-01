@@ -178,7 +178,7 @@ Each TX sends $Q$ chirps, each with $N_\text{adc}$ samples, and each TX/RX pair 
 What do we do with this cube? We perform a 3D FFT to obtain the information we want in our desired domain
 
 $$
-S[k_a, k_d, k_r] = \text{FFT}_3 \left\{ s[p, q, n] \right\},
+S[k_a, k_d, k_r] = \text{FFT}_3 \left\lbrace s[p, q, n] \right\rbrace,
 $$
 
 where $k_a$, $k_d$ and $k_r$ are the discrete angle, Doppler and range frequency bins. In the spectrum domain, ie $|S[k_a, k_d, k_r]|$, each target then shows up as a sinc-like peak in 3D, as illustrated below.
