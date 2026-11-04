@@ -21,41 +21,94 @@ For transparency, I want to make it clear that AI tools were used as coding assi
 
 ## 2. Theory and assumptions
 
+![The radar chain: transmitter, target, downconverter, ADC and DSP](docs/02_radar_chain.png)
+
+The figure above shows a simplified radar diagram. The transmitter emits a signal $s_{TX}(t)$, which travels through the air and impinges on the target(s) in the scene. The receiver consists of a downconverter (for simplicity, a mixer), a filter (not shown), an analog-to-digital converter (ADC) and a digital signal processing (DSP) unit.
+
+Consider a single target at range $R$. Part of the impinging signal is backscattered towards the receiver, which sees an *echo*: a scaled and delayed copy of the transmit signal, $s_{RX}(t) = A\, s_{TX}(t-\tau)$, with $\tau = 2R/c$. Here $c$ is the speed of light and the factor 2 accounts for the round trip, radar to target and back.
+
 ### 2.1 The FMCW signal model
+
+In an FMCW radar, the transmit signal is a linear chirp whose mathematical model is 
+$$
+s_{TX}(t) = A_{TX} \cos \left[ \phi_{TX}(t) \right] = A_{TX} \cos \left[ 2 \pi \left( f_c t + \alpha \frac{t^2}{2} \right) \right],
+$$
+
+with $t \in [0, T_c]$ and where $A_{TX}$ is an amplitude value,  $f_c$ is the starting frequency, $\alpha = B / T_c$ is the chirp slope with $B$ the desired bandwidth and $T_c$ the chirp length. Since we assume a linear chirp, the bandwidth increases linearly as $f(t) = f_c + \alpha t$. 
 
 #### 2.1.1 The IF signal
 
-![The radar chain: transmitter, target, downconverter, ADC and DSP](docs/02_radar_chain.png)
+The transmitter emits $s_{TX}(t)$ and, assuming a single target, the receiver will collect $s_{RX}(t) = A s_{TX}(t-\tau)$, where $\tau = 2R / c$ (as shown above). If the target moves with velocity $v$ (we use the convention $v > 0$ for a receding target), its range changes during the chirp as $R(t) = R + vt$, and so does the delay, $\tau(t) = 2(R + vt)/c$. 
 
-In an FMCW radar, the transmit signal -call it $s_{RF}(t)$- is a linear chirp of duration $T_c$. It starts at $f_c$ and ends at $f_c + B$, where $B$ is the desired bandwidth. The bandwidth increases linearly as $f(t) = f_c + \alpha t$, where $\alpha = B / T_c$ (we will refer to $\alpha$ as the chirp slope) and $t \in \left[0, T_c \right]$. 
-
-The transmitter emits $s_{RF}(t)$. It travels through the air and impinges on the targets present in the scene. For simplicity, assume a single target at range $R$. The receiver "sees" an echo, namely a scaled and delayed version of the transmit signal, $A s_{RF}(t-\tau)$, where $\tau = 2R/c$ ($c$ is the speed of light and the factor $2$ considers the round-trip time, ie the time it takes from the signal to travel from the radar to the target and back). The receiver mixes the echo with a copy of the transmitted chirp (this procedure is called *dechirping*). The resulting baseband (IF) signal has the following mathematical model
+The downconverter mixes a copy of the transmit signal (cf. the line called "LO") with the signal arriving at the receiver (this technique is called dechirping)
 
 $$
-s(t) = A \, \exp \left\lbrace j 2\pi \left( f_c \tau + \alpha \tau t - \tfrac{1}{2} \alpha \tau^2 \right) \right\rbrace, \text{ for } 0 \le t \le T_c
+s(t) = s_{\text{RX}}(t) \cdot s_{\text{TX}}(t).
 $$
 
-where $A$ is the complex amplitude of the echo and the other parameters were previously defined. We will not be going into any specifics of $A$, but it is a function of the target, a few radar parameters and the radar-target distance. Also, keep in mind that $t$ is the time within the chirp (*fast time*). For simplicity, the last term in $s(t)$ is called "residual phase". For the purposes of this simulation, we will drop it.
-
-The Fourier Transform of $s(t)$ has a closed form and it is  
+With a slight abuse of notation, but to better understand the maths behind it, let $s_{TX}(t) = \cos \left[ \phi_{\text{TX}}(t) \right]$ and $s_{RX}(t) = \cos \left[ \phi_{\text{RX}}(t) \right]$, and compute
 
 $$
-S(f) = \int_0^{T_c} s(t) \, e^{-j 2\pi f t} \, dt 
-= A \, T_c \, e^{j 2\pi f_c \tau} \, e^{-j \pi (f - \alpha\tau) T_c} \, \text{sinc}\!\left( (f - \alpha\tau) T_c \right)
+\begin{aligned}
+s(t) &= \cos \left[ \phi_{\text{TX}}(t) \right] \, \cos \left[ \phi_{\text{RX}}(t) \right] \\
+     &= \frac{\cos \left[ \phi_{\text{TX}}(t) + \phi_{\text{RX}}(t) \right]}{2}
+      + \frac{\cos \left[ \phi_{\text{TX}}(t) - \phi_{\text{RX}}(t) \right]}{2}.
+\end{aligned}
 $$
 
-Taking the magnitude, $|S(f)| = A T_c \left| \text{sinc}\!\left( (f - \alpha\tau) T_c \right) \right|$, we see that the $\text{sinc}$ peaks at $ f_\text{IF} = \alpha\tau$, where IF stands for intermediate frequency (also called beat frequency). Recall that $\tau = 2R/c$, so
+The filter (low-pass) removes the first component, the sum frequency, and lets the second component through. Focusing on the arguments inside the latter $\cos()$, we obtain
+$$
+\begin{aligned}
+\phi(t) &= \phi_{\text{TX}}(t) - \phi_{\text{RX}}(t) \\
+       &= 2\pi \left( f_c t + \frac{\alpha}{2}t^2 \right)
+          - 2\pi \left( f_c (t - \tau) + \frac{\alpha}{2} (t - \tau)^2 \right) \\
+       &= 2\pi \left( f_c \tau + \alpha \tau t - \frac{\alpha}{2}\tau^2 \right) \\
+       &= 2 \pi \left( \frac{2 f_c R}{c} + \frac{2 f_c v}{c} t + \frac{2 \alpha R}{c} t + \frac{2 \alpha v}{c} t^2 - \frac{2\alpha (R + vt)^2}{c^2} \right),
+\end{aligned}
+$$
+where the last line follows from $\tau = 2(R + vt)/c$. Let us look at the terms inside the parentheses, in order:
+
+1. $2 f_c R/c$ is a constant phase that depends on the range
+2. $(2 f_c v/c) \, t$ is linear in $t$, so it is a frequency. We define the **Doppler frequency** $f_d = 2 f_c v / c = 2v/\lambda_c$, with $\lambda_c = c/f_c$ the wavelength.
+3. $(2 \alpha R/c) \, t$ is also linear in $t$: it is the **beat frequency** $f_\text{IF} = 2\alpha R / c$, which carries the range.
+4. $(2 \alpha v / c) \, t^2$ is the "range-Doppler coupling", a (very small) quadratic phase that appears only if the target moves.
+5. The last term is the "residual phase". The part that is constant in $t$ does not change where the peak is, and the part that depends on $t$ is negligible.
+
+Terms 4 and 5 can typically be ignored. The Doppler term (2) is also negligible within a single chirp, but its phase accumulates from one chirp to the next, which is what we exploit in Section 2.2. For now we consider a static target ($v=0$ m/s), so the IF signal is approximately
+
+$$ 
+s(t) \approx A \cos \left[ 2 \pi \left( f_c \tau + \alpha \tau t \right) \right], \quad \tau = \frac{2R}{c},
+$$
+
+with $t \in [0, T_c]$. Keep in mind that $t$ is the time within the chirp (*fast time*). 
+
+Assuming an I/Q receiver, namely two mixers, one of them using a copy of the transmit signal shifted by 90°, we have access to both the $\cos$ and the $\sin$ of the phase, i.e. the complex version of this signal
 
 $$
-f_\text{IF} = \frac{2\alpha R}{c} \Longleftrightarrow R = \frac{c \, f_\text{IF}}{2\alpha}.
+s(t) = A \exp \left\{ j 2 \pi \left( f_c \tau + \alpha \tau t \right) \right\},
 $$
 
-Since frequency and range are related, the *position* of the peak also tells us the range of the target. The phase terms do not change where the peak is (NOTE: Should we discard the phase, then? No, in a lot of applications the phase is just as important as the magnitude).
+which is the one we use from now on. The Fourier Transform of $s(t)$ has a closed form and it is  
+
+$$
+\begin{aligned}
+S(f) &= \int_0^{T_c} s(t) \, e^{-j 2\pi f t} \, dt \\
+     &= A \, T_c \, e^{j 2\pi f_c \tau} \, e^{-j \pi (f - \alpha\tau) T_c} \, \text{sinc}\left( (f - \alpha\tau) T_c \right).
+\end{aligned}
+$$
+
+Taking the magnitude, $|S(f)| = A T_c \left| \text{sinc} \left( (f - \alpha\tau) T_c \right) \right|$ (where $\text{sinc}(x) = \sin(\pi x)/(\pi x)$), we see that the $\text{sinc}$ peaks at $f = \alpha\tau$, which is exactly the beat frequency $f_\text{IF} = 2\alpha R/c$ found above. Inverting this relation,
+
+$$
+R = \frac{c \, f_\text{IF}}{2\alpha}.
+$$
+
+Since frequency and range are related, the *position* of the peak tells us the range of the target. The phase terms do not change where the peak is, but we should not discard them: the phase across chirps and across antennas is what lets us estimate velocity and angle (Sections 2.2 and 2.3).
 
 What happens when several targets are present in the scene? The resulting baseband signal is the linear combination of the contribution of each target
 
 $$
-s(t) = \sum_{k=0}^{K-1} A_k \, \exp\!\left( j 2\pi \left( f_c \tau_k + \alpha \tau_k t \right) \right),
+s(t) = \sum_{k=0}^{K-1} A_k \, \exp \left\{ j 2\pi \left( f_c \tau_k + \alpha \tau_k t \right) \right\},
 $$
 
 where $A_k$ and $\tau_k = 2R_k/c$ are the amplitude and time delay of the $k$-th target, and $K$ is the total number of targets in the scene. In frequency domain, we would be seeing $\text{sinc}()$ centered w.r.t. $f_{\text{IF},k} = \alpha \tau_k = 2 \alpha R_k / c$, for $k=0, \dots, K-1$.
@@ -63,6 +116,15 @@ where $A_k$ and $\tau_k = 2R_k/c$ are the amplitude and time delay of the $k$-th
 So far the signal is continuous in time. The ADC now samples it, $s[n] = s(n T_s)$ for $n = 0, \dots, N_\text{adc} - 1$, at the rate $f_s = 1/T_s$. Since the chirp lasts $T_c$, this gives up to $N_\text{adc} = \lceil T_c f_s \rceil$ samples per chirp (in practice slightly fewer, since the ADC starts after a short settling time).
 
 Why is $f_s$ enough? Because we assume an I/Q (complex) receive chain: the in-phase and quadrature components are both sampled, so each sample is a complex number. A real signal with frequencies up to $f_\text{max}$ needs $f_s \ge 2 f_\text{max}$, but the IF frequencies are all positive (since $R > 0$), so a complex signal occupies $[0, f_\text{max}]$ and needs only $f_s \ge f_\text{max}$.
+
+#### 2.1.2 Noise and SNR definition
+In reality, $s_{RX}(t)$ travels through the air and, as soon as it reaches the receiver, the random motion of electrons in the antenna, wires and electronics automatically corrupts the signal with noise. Noise is modeled as additive white Gaussian noise (AWGN) and it goes through the same chain as the signal. It can be shown that, in the end, the IF signal is 
+
+$$ 
+r(t) = s(t) + w(t),
+$$ 
+
+where $w(t)$ is the resulting (complex) noise. After sampling, we have $r[n] = s[n] + w[n]$, for $n=0, 1, \dots, N_{adc}-1$ and where each $w[n]$ is a zero-mean complex Gaussian random variable with variance $\sigma^2$, independent from sample to sample. We define the signal-to-noise ratio (SNR) as $\text{SNR} = |A|^2 / \sigma^2$.
 
 **Example.** Assume that we have a radar emitting a chirp with $f_c = 77$ GHz, $B = 120$ MHz, $T_c = 12$ µs, $f_s = 45$ MHz. The ADC acquires $N_\text{adc} = 512$ samples (11.4 µs, slightly less than $T_c$ because of the settling time) and there are two targets in the scene, one at 75 m and another one at 150 m. The slope is $\alpha = B/T_c = 10$ MHz/µs, so $f_\text{IF,max} = f_s$ would correspond to $R_{\max} = c f_s / (2\alpha) \approx 675$ m, well beyond the 300 m shown in the figures. The left figure below shows the time-domain data of a single chirp (I/Q channels), $s[n]$ for $n = 0, \dots, N_\text{adc} - 1$. The right figure shows the magnitude of its discrete frequency-domain version, $|S[k_r]|$ for $k_r = 0, \dots, N_\text{fft} - 1$ ($N_\text{fft} = 512$). In the time domain the two tones are hard to tell apart, while the FFT spectrum shows one peak per target.
 
@@ -82,8 +144,9 @@ How do these parameters "shape" a radar?
 - **Sampling rate.** The ADC samples at $f_s$, and since a higher rate lets us observe higher IF frequencies, we usually want to sample as fast as possible. In any case, we have to make sure that we pick a sampling frequency that agrees with (2)
 - **Chirp length.** Having fixed $B$ and $f_s$, we are left to select the chirp length $T_c$. The slope is $\alpha = B/T_c$, so the slope limit in (3), requires $T_c \ge B/\alpha_{\max}$. Within this limit, $T_c$ is a choice appropriate that once again depends on the application. Once $T_c$ is known, we can also determine the (maximum) number of samples per chirp, $N_\text{adc} = \lceil f_s T_c \rceil$, where $\lceil \cdot \rceil$ is the ceiling (round up) operator.
 - **Maximum range.** This is now a consequence of the choices above. Since $f_\text{IF} = 2\alpha R/c$, the maximum range corresponds to the maximum IF frequency. With an I/Q receiver we can set $f_\text{IF,max} = f_s$, so $R_{\max} = c f_s / (2 \alpha) = c f_s T_c / (2B)$. If this is not enough for the application, a longer chirp (a smaller slope) gives more range.
+- **Maximum velocity.** The radar also has a limit on the velocity it can measure unambiguously. It can be shown that, if we send multiple chirps back to back, the maximum velocity is $v_{\max} = \lambda_c / (4T_c)$, where $\lambda_c = c/f_c$ is the operating wavelength. A target moving faster than $v_{\max}$ is not lost, but it is seen at the *wrong* velocity (it wraps around). Shorter chirps increase the maximum velocity, while longer chirps decrease it.
 
-Note that the steps above are just a rough guide, not the only way to proceed.
+Keeping every other parameter fixed, $R_{\max}$ and $v_{\max}$ pull $T_c$ in opposite directions. A longer chirp increases $R_{\max}$ but decreases $v_{\max}$.
 
 ### 2.2 Range and velocity estimation
 
@@ -100,10 +163,10 @@ Typically, we refer to the time along the rows as _fast time_, because it's the 
 Assume a single target at range $R$, moving with velocity $v$. At each $q$-th chirp ($q = 0, \dots, Q - 1$), the target is seen at $R_q = R + v q T_c$ and the delay is $\tau_q = 2(R + v q T_c)/c$. Without going into the details, the mathematical expression of the $q$-th chirp is defined as 
 
 $$
-s[q, n] = A \, \exp\!\left( j 2\pi \left( f_c \tau + f_\text{IF} \, n T_s + f_d \, q T_c \right) \right), 
+s[q, n] = A \, \exp \left\{ j 2\pi \left( f_c \tau + f_\text{IF} \, n T_s + f_d \, q T_c \right) \right\}, 
 $$
 
-where $f_\text{IF} = 2 \alpha R/c$, $f_d = 2 v /\lambda_c$ ($\lambda_c = c/f_c$) and $q = 0, \dots, Q - 1$ and $n = 0, \dots, N_\text{adc} - 1$. Note that $f_\text{IF}$ was previously defined, while $f_d$ is new. This quantity is the **Doppler frequency**, namely the rate at which the phase of the echo rotates from chirp to chirp because the target moves. It is proportional to the velocity $v$. When $v > 0$, we imply that the target is moving away from the radar (receding), and $v<0$ is approaching.
+where $f_\text{IF}$ and $f_d$ are the beat and Doppler frequencies defined in Section 2.1.1, $q = 0, \dots, Q - 1$ and $n = 0, \dots, N_\text{adc} - 1$. Recall that $v>0$ means a receding target and $v<0$ an approaching one.
 
 #### 2.2.2 The range-Doppler map
 
@@ -152,7 +215,7 @@ In other words, the antennas, which are our spatial samples, have to be placed a
 
 How can we build such an array? A straightforward option is a uniform linear array of transceivers (transmitter/receivers together) spaced at $\lambda_c/2$. A multiple-input, multiple-output (MIMO) configuration is a smarter way to achieve what we want. A MIMO architecture comprises multiple independent transmitters (TX) and receivers (RX). Literally, each TX has its own power amplifier and antenna, sends a specific number of chirps, and each RX has its own receive chain.
 
-For the purposes of this discussion, assume that a commercially available component has the following MIMO architecture
+For the purposes of this discussion, assume that a commercially available chip has the following MIMO architecture
 - 4 TXs spaced $3\lambda_c/2$ apart from each other (on a line), and 
 - 3 RXs spaced $\lambda_c/2$ apart from each other (on a line). 
 
@@ -170,7 +233,7 @@ The figure below shows the physical TX and RX antennas and the resulting virtual
 
 What does this mean? With only 7 _physical_ antennas, we have realized a 12-element *virtual* array with $l_c/2$-spaced elements.
 
-**Time-division multiplexing (TDM)**. For the purposes of this discussion, we will assume that TX 0 sends $Q$ chirps while all 3 receivers "listen" for the echoes, then TX 1 sends $Q$ chirps, and so on. This technique is called TDM and it is an extremely simple technique that allows the receivers to understand that a particular echo was received from a specific transmitter. This is an important aspect that is required to perform spatial processing. Other multiplexing techniques are available, but we will not talk about them here.
+**Time-division multiplexing (TDM)**. For the purposes of this discussion, we will assume that TX 0 sends $Q$ chirps while all 3 receivers "listen" for the echoes, then TX 1 sends $Q$ chirps, and so on. This technique is called TDM and it is an extremely simple technique that allows the receivers to understand that a particular echo was received from a specific transmitter. Other multiplexing techniques are available, but we will not talk about them here.
 
 #### 2.3.4 From data cube to range-angle map
 
@@ -189,7 +252,7 @@ How do we get the angle information? Defining $N_\text{ang}$ the FFT size perfor
 
 In this tutorial, we are considering static targets, so the cube can be collapsed into a 2D map. Because of the linearity property, this operation can be achieved in multiple ways. For example, first we obtain the averaged chirp, then we perform a 2D FFT along angle and range. Plotting the resulting magnitude, gives us a range-angle map.
 
-The figure below shows what the code does too. The "true" scene is provided on the left. Target 1 (in red) is at $R = 75$ m, not moving, at an angle $\theta = -30°$ (to the left of the radar). Its position is $(x, y) = (75 \sin(-30°), \, 75 \cos(-30°)) \approx (-37.5, \, 65)$ m, and its SNR is 20 dB. Target 2 (in blue) is at $R = 150$ m, not moving, at an angle $\theta = +45°$ (to the right of the radar). Its position is $(x, y) = (150 \sin(45°), \, 150 \cos(45°)) \approx (106, \, 106)$ m, and its SNR is 10 dB. If you do not know what SNR means, do not worry. For the time being, simply assume is the target's amplitude. 
+The figure below shows what the code does too. The "true" scene is provided on the left. Target 1 (in red) is at $R = 75$ m, not moving, at an angle $\theta = -30°$ (to the left of the radar). Its position is $(x, y) = (75 \sin(-30°), \, 75 \cos(-30°)) \approx (-37.5, \, 65)$ m, and its SNR is 20 dB. Target 2 (in blue) is at $R = 150$ m, not moving, at an angle $\theta = +45°$ (to the right of the radar). Its position is $(x, y) = (150 \sin(45°), \, 150 \cos(45°)) \approx (106, \, 106)$ m, and its SNR is 10 dB.
 The figure to the right shows the reconstructed scene in the same $(x, y)$ coordinates ($x = R\sin\theta$, $y = R\cos\theta$). As can be seen, the reconstruction works as expected. We see two bright spots in the range-angle map at $R \approx 75$ m, $\theta \approx -30°$ and $R \approx 150$ m, $\theta \approx +45°$. Target 2 is dimmer than Target 1 simply because its return (amplitude) is lower than Target 1.
 
 ![The scene, and the range-angle map reconstructed from the data](docs/09_range_angle.png)
