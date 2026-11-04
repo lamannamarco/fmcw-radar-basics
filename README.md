@@ -30,6 +30,7 @@ Consider a single target at range $R$. Part of the impinging signal is backscatt
 ### 2.1 The FMCW signal model
 
 In an FMCW radar, the transmit signal is a linear chirp whose mathematical model is 
+
 $$
 s_{TX}(t) = A_{TX} \cos \left[ \phi_{TX}(t) \right] = A_{TX} \cos \left[ 2 \pi \left( f_c t + \alpha \frac{t^2}{2} \right) \right],
 $$
@@ -48,16 +49,17 @@ $$
 
 With a slight abuse of notation, but to better understand the maths behind it, let $s_{TX}(t) = \cos \left[ \phi_{\text{TX}}(t) \right]$ and $s_{RX}(t) = \cos \left[ \phi_{\text{RX}}(t) \right]$, and compute
 
-$$
+```math
 \begin{aligned}
 s(t) &= \cos \left[ \phi_{\text{TX}}(t) \right] \, \cos \left[ \phi_{\text{RX}}(t) \right] \\
      &= \frac{\cos \left[ \phi_{\text{TX}}(t) + \phi_{\text{RX}}(t) \right]}{2}
       + \frac{\cos \left[ \phi_{\text{TX}}(t) - \phi_{\text{RX}}(t) \right]}{2}.
 \end{aligned}
-$$
+```
 
 The filter (low-pass) removes the first component, the sum frequency, and lets the second component through. Focusing on the arguments inside the latter $\cos()$, we obtain
-$$
+
+```math
 \begin{aligned}
 \phi(t) &= \phi_{\text{TX}}(t) - \phi_{\text{RX}}(t) \\
        &= 2\pi \left( f_c t + \frac{\alpha}{2}t^2 \right)
@@ -65,7 +67,8 @@ $$
        &= 2\pi \left( f_c \tau + \alpha \tau t - \frac{\alpha}{2}\tau^2 \right) \\
        &= 2 \pi \left( \frac{2 f_c R}{c} + \frac{2 f_c v}{c} t + \frac{2 \alpha R}{c} t + \frac{2 \alpha v}{c} t^2 - \frac{2\alpha (R + vt)^2}{c^2} \right),
 \end{aligned}
-$$
+```
+
 where the last line follows from $\tau = 2(R + vt)/c$. Let us look at the terms inside the parentheses, in order:
 
 1. $2 f_c R/c$ is a constant phase that depends on the range
@@ -90,12 +93,12 @@ $$
 
 which is the one we use from now on. The Fourier Transform of $s(t)$ has a closed form and it is  
 
-$$
+```math
 \begin{aligned}
 S(f) &= \int_0^{T_c} s(t) \, e^{-j 2\pi f t} \, dt \\
      &= A \, T_c \, e^{j 2\pi f_c \tau} \, e^{-j \pi (f - \alpha\tau) T_c} \, \text{sinc}\left( (f - \alpha\tau) T_c \right).
 \end{aligned}
-$$
+```
 
 Taking the magnitude, $|S(f)| = A T_c \left| \text{sinc} \left( (f - \alpha\tau) T_c \right) \right|$ (where $\text{sinc}(x) = \sin(\pi x)/(\pi x)$), we see that the $\text{sinc}$ peaks at $f = \alpha\tau$, which is exactly the beat frequency $f_\text{IF} = 2\alpha R/c$ found above. Inverting this relation,
 
