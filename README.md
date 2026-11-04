@@ -88,7 +88,7 @@ with $t \in [0, T_c]$. Keep in mind that $t$ is the time within the chirp (*fast
 Assuming an I/Q receiver, namely two mixers, one of them using a copy of the transmit signal shifted by 90°, we have access to both the $\cos$ and the $\sin$ of the phase, i.e. the complex version of this signal
 
 $$
-s(t) = A \exp \left\{ j 2 \pi \left( f_c \tau + \alpha \tau t \right) \right\},
+s(t) = A \exp \left\lbrace j 2 \pi \left( f_c \tau + \alpha \tau t \right) \right\rbrace,
 $$
 
 which is the one we use from now on. The Fourier Transform of $s(t)$ has a closed form and it is  
@@ -111,7 +111,7 @@ Since frequency and range are related, the *position* of the peak tells us the r
 What happens when several targets are present in the scene? The resulting baseband signal is the linear combination of the contribution of each target
 
 $$
-s(t) = \sum_{k=0}^{K-1} A_k \, \exp \left\{ j 2\pi \left( f_c \tau_k + \alpha \tau_k t \right) \right\},
+s(t) = \sum_{k=0}^{K-1} A_k \, \exp \left\lbrace j 2\pi \left( f_c \tau_k + \alpha \tau_k t \right) \right\rbrace,
 $$
 
 where $A_k$ and $\tau_k = 2R_k/c$ are the amplitude and time delay of the $k$-th target, and $K$ is the total number of targets in the scene. In frequency domain, we would be seeing $\text{sinc}()$ centered w.r.t. $f_{\text{IF},k} = \alpha \tau_k = 2 \alpha R_k / c$, for $k=0, \dots, K-1$.
@@ -166,7 +166,7 @@ Typically, we refer to the time along the rows as _fast time_, because it's the 
 Assume a single target at range $R$, moving with velocity $v$. At each $q$-th chirp ($q = 0, \dots, Q - 1$), the target is seen at $R_q = R + v q T_c$ and the delay is $\tau_q = 2(R + v q T_c)/c$. Without going into the details, the mathematical expression of the $q$-th chirp is defined as 
 
 $$
-s[q, n] = A \, \exp \left\{ j 2\pi \left( f_c \tau + f_\text{IF} \, n T_s + f_d \, q T_c \right) \right\}, 
+s[q, n] = A \, \exp \left\lbrace j 2\pi \left( f_c \tau + f_\text{IF} \, n T_s + f_d \, q T_c \right) \right\rbrace, 
 $$
 
 where $f_\text{IF}$ and $f_d$ are the beat and Doppler frequencies defined in Section 2.1.1, $q = 0, \dots, Q - 1$ and $n = 0, \dots, N_\text{adc} - 1$. Recall that $v>0$ means a receding target and $v<0$ an approaching one.
@@ -175,7 +175,7 @@ where $f_\text{IF}$ and $f_d$ are the beat and Doppler frequencies defined in Se
 
 Why did we put the data into matrix form? It allows us to exploit fast algorithms that implement the Fourier Transform, like the FFT. An FFT along fast time (along the rows) provides us with the range information about the target. An FFT along slow time (along the columns) gives the target's velocity. Do you have to sequentially perform the FFT along the rows and then along the colums? Of course not, you can apply a 2D FFT (see below)
 
-Consider the image below, in which we have two targets: one at 75 m, moving at +20 m/s, and another one at 150 m, moving at -10 m/s. The left-most image, shows the $\text{Re} \{ s[q,n]\}$ (the I channel of the discretized data), the center images shows the result after applying the FFT along fast time to the raw data, while the right-most image shows the result after also applying the FFT along the columns. In the center-image, we would only be able to tell that there are two targets, on at 75 and the other one at 150 m. In the right-most image, we can determine the target's range _and_ velocity. 
+Consider the image below, in which we have two targets: one at 75 m, moving at +20 m/s, and another one at 150 m, moving at -10 m/s. The left-most image, shows the $\text{Re} \lbrace s[q,n] \rbrace$ (the I channel of the discretized data), the center images shows the result after applying the FFT along fast time to the raw data, while the right-most image shows the result after also applying the FFT along the columns. In the center-image, we would only be able to tell that there are two targets, on at 75 and the other one at 150 m. In the right-most image, we can determine the target's range _and_ velocity. 
 
 ![Raw data, FFT along fast time, FFT along slow time](docs/05_range_doppler.png)
 
@@ -184,7 +184,7 @@ The right-most figure is called the "range-Doppler map" (RDM) because it's 2D (h
 Assuming we have the data in matrix form as discussed above and, with a slight abuse of notation, definining it as $\mathbf{s}[q,n]$ the RDM can be computed as 
 
 $$
-\text{RDM} = |\mathbf{S}[k_d, k_r]| = |\text{FFT}_2 \{\mathbf{s}[q, n]\}|, 
+\text{RDM} = |\mathbf{S}[k_d, k_r]| = |\text{FFT}_2 \lbrace\mathbf{s}[q, n]\rbrace|, 
 $$ 
 
 where $k_d$ is the discrete Doppler frequency and $k_r$ is the discrete intermediate frequency. Typically, the RDM is shown in log scale, so this means plotting $20\log_{10}(\text{RDM})$.
