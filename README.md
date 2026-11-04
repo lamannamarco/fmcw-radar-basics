@@ -100,7 +100,7 @@ S(f) &= \int_0^{T_c} s(t) \, e^{-j 2\pi f t} \, dt \\
 \end{aligned}
 ```
 
-Taking the magnitude, $|S(f)| = A T_c \left| \text{sinc} \left( (f - \alpha\tau) T_c \right) \right|$ (where $ \text{sinc}(x) = \sin(\pi x)/(\pi x) $), we see that the $ \text{sinc} $ peaks at $f = \alpha\tau$, which is exactly the beat frequency $f_\text{IF} = 2\alpha R/c$ found above. Inverting this relation,
+Taking the magnitude, $|S(f)| = A T_c \left| \text{sinc} \left( (f - \alpha\tau) T_c \right) \right|$ (where $\text{sinc}(x) = \sin(\pi x)/(\pi x)$), we see that the $\text{sinc}$ peaks at $f = \alpha\tau$, which is exactly the beat frequency $f_\text{IF} = 2\alpha R/c$ found above. Inverting this relation,
 
 $$
 R = \frac{c \, f_\text{IF}}{2\alpha}.
